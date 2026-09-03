@@ -16,8 +16,6 @@ variable "service" {
     ssh_key       = string
     password      = string
     os_type       = string
-    domain        = string
-    port          = number
   })
 }
 

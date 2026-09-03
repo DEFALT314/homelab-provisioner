@@ -31,7 +31,7 @@ service.yml  →  terraform apply  →  LXC containers
                               Docker + compose  ←── NPM ──→  domain
 ```
 
-1. `terraform apply` creates one unprivileged LXC container per service
+1. `terraform apply` creates one unprivileged LXC container per host
    (Debian template, static IP) and generates the Ansible inventory and
    service list.
 2. The `docker` role installs Docker Engine and the Compose plugin from
@@ -47,6 +47,7 @@ service.yml  →  terraform apply  →  LXC containers
 .
 ├── deploy.sh
 ├── .env.example
+├── hosts.yml.example            # committed (placeholders)
 ├── terraform/
 │   ├── main.tf
 │   ├── providers.tf
@@ -121,6 +122,20 @@ cd ../ansible
 ansible-playbook playbooks/site.yml
 ```
 
+## Hosts
+
+Containers are defined in `hosts.yml` (copy `hosts.yml.example` first).
+Each host gets one LXC container; multiple services can share a host by
+setting the same `host` value in their `service.yml`.
+
+```yaml
+docker:
+  ip_address: "192.168.1.100/24"
+  cores: 2
+  memory: 2048
+  disk_size: 16
+```
+
 ## Adding a service
 
 `services/memos/` is a working example — replace it with your own services.
@@ -133,7 +148,7 @@ For each service, create `services/<name>/` with:
 `service.yml.example`:
 
 ```yaml
-ip_address: "192.168.1.100/24"   # container IP in CIDR
+host: docker                      # which host (from terraform/hosts.yml)
 domain: "memos.example.com"       # NPM domain; empty = skip NPM
 port: 5230                        # port the app listens on
 

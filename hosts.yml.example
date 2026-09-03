@@ -1,0 +1,5 @@
+docker:
+  ip_address: "192.168.1.100/24"
+  cores: 2
+  memory: 2048
+  disk_size: 16

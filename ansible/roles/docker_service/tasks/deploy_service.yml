@@ -1,0 +1,21 @@
+- name: Ensure target directory exists
+  ansible.builtin.file:
+    path: "{{ compose_dir }}/{{ service }}"
+    state: directory
+    mode: "0755"
+
+- name: Sync service directory
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../../services/{{ service }}/"
+    dest: "{{ compose_dir }}/{{ service }}/"
+    rsync_opts:
+      - "--exclude=service.yml"
+      - "--exclude=service.yml.example"
+      - "--checksum"
+      - "--no-owner"
+      - "--no-group"
+
+- name: Start docker-compose service
+  community.docker.docker_compose_v2:
+    state: present
+    project_src: "{{ compose_dir }}/{{ service }}"

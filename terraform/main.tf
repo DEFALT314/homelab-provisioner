@@ -1,17 +1,20 @@
 locals {
   defaults = {
-    template          = "local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
-    bridge            = "vmbr0"
-    gateway           = "192.168.1.1"
-    swap              = 512
-    unprivileged      = true
-    start_on_boot     = true
-    cores             = 2
-    memory            = 512
-    disk_size         = 8
-    ssh_key           = var.ssh_public_key_path
-    password          = var.default_password
-    os_type           = "debian"
+    template      = "local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
+    bridge        = "vmbr0"
+    gateway       = "192.168.1.1"
+    swap          = 512
+    unprivileged  = true
+    start_on_boot = true
+    cores         = 2
+    memory        = 512
+    disk_size     = 8
+    ssh_key       = pathexpand(var.ssh_public_key_path)
+    password      = var.default_password
+    os_type       = "debian"
+  }
+
+  service_defaults = {
     domain            = ""
     port              = null
     ssl               = false
@@ -19,21 +22,28 @@ locals {
     certificate_id    = 0
   }
 
+  hosts = {
+    for name, h in yamldecode(file("${path.module}/../hosts.yml")) :
+    name => merge(local.defaults, { hostname = name }, h)
+  }
+
   service_files = fileset("${path.module}/../services", "*/service.yml")
 
   services = {
     for f in local.service_files :
-    dirname(f) => merge(
-      local.defaults,
-      { hostname = dirname(f), name = dirname(f), ssh_key = pathexpand(var.ssh_public_key_path) },
-      yamldecode(file("${path.module}/../services/${f}"))
-    )
+    dirname(f) => merge(local.service_defaults, yamldecode(file("${path.module}/../services/${f}")))
   }
+
+  host_services = {
+    for host_name in keys(local.hosts) :
+    host_name => [for svc_name, svc in local.services : svc_name if svc.host == host_name]
+  }
+
   service_list = [
     for name, svc in local.services :
     {
       name              = name
-      host              = split("/", svc.ip_address)[0]
+      host              = split("/", local.hosts[svc.host].ip_address)[0]
       domain            = svc.domain
       port              = svc.port
       ssl               = svc.ssl
@@ -46,7 +56,7 @@ locals {
 
 module "containers" {
   source   = "../modules/lxc-container"
-  for_each = local.services
+  for_each = local.hosts
 
   service      = each.value
   node_name    = var.node_name
@@ -55,7 +65,8 @@ module "containers" {
 
 resource "local_file" "inventory" {
   content = templatefile("${path.module}/templates/inventory.yml.tpl", {
-    services        = local.services
+    hosts           = local.hosts
+    host_services   = local.host_services
     ssh_private_key = pathexpand(trimsuffix(var.ssh_public_key_path, ".pub"))
   })
   filename = "${path.module}/../ansible/inventory.yml"
