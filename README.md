@@ -1,4 +1,4 @@
-# auto-deployer
+# homelab-provisioner
 
 Terraform + Ansible pipeline for a Proxmox homelab. Creates LXC containers,
 installs Docker, deploys `docker-compose` services, and registers them in
