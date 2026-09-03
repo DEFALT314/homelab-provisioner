@@ -1,0 +1,5 @@
+---
+npm_url: "{{ lookup('env', 'NPM_URL') | default('http://192.168.1.250:81', true) }}"
+
+npm_admin_email: "{{ lookup('env', 'NPM_ADMIN_EMAIL') }}"
+npm_admin_password: "{{ lookup('env', 'NPM_ADMIN_PASSWORD') }}"

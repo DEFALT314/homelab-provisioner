@@ -1,0 +1,59 @@
+---
+- name: Verify NPM credentials are provided
+  ansible.builtin.assert:
+    that:
+      - npm_admin_email != ""
+      - npm_admin_password != ""
+    fail_msg: "NPM credentials missing. Set NPM_ADMIN_EMAIL and NPM_ADMIN_PASSWORD (optionally NPM_URL)."
+
+- name: Login to NPM API and get token
+  ansible.builtin.uri:
+    url: "{{ npm_url }}/api/tokens"
+    method: POST
+    body_format: json
+    body:
+      identity: "{{ npm_admin_email }}"
+      secret: "{{ npm_admin_password }}"
+    status_code: [200, 201]
+    validate_certs: false
+  register: npm_login
+  no_log: true
+
+- name: Get existing proxy hosts
+  ansible.builtin.uri:
+    url: "{{ npm_url }}/api/nginx/proxy-hosts"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ npm_login.json.token }}"
+    validate_certs: false
+  register: npm_hosts
+  changed_when: false
+
+- name: Create proxy hosts for services
+  ansible.builtin.uri:
+    url: "{{ npm_url }}/api/nginx/proxy-hosts"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ npm_login.json.token }}"
+    body_format: json
+    body:
+      domain_names: ["{{ item.domain }}"]
+      forward_scheme: http
+      forward_host: "{{ item.host }}"
+      forward_port: "{{ item.port }}"
+      certificate_id: "{{ item.certificate_id | default(0) if (item.certificate_id | default(0)) > 0 else ('new' if (item.ssl | default(false)) else 0) }}"
+      ssl_forced: "{{ (item.ssl | default(false)) or (item.certificate_id | default(0) > 0) }}"
+      http2_support: "{{ (item.ssl | default(false)) or (item.certificate_id | default(0) > 0) }}"
+      block_exploits: true
+      allow_websocket_upgrade: false
+      caching_enabled: false
+      enabled: true
+      meta:
+        letsencrypt_email: "{{ item.letsencrypt_email | default('') }}"
+        dns_challenge: false
+    status_code: [200, 201]
+    validate_certs: false
+  loop: "{{ services | default([]) }}"
+  when: item.domain not in (npm_hosts.json | map(attribute='domain_names') | flatten)
+  loop_control:
+    label: "{{ item.domain }} -> {{ item.host }}:{{ item.port }}"

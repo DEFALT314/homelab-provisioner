@@ -1,0 +1,9 @@
+ip_address: "192.168.1.100/24"
+
+domain: "memos.example.com"
+port: 5230
+
+ssl: false
+letsencrypt_email: ""
+
+certificate_id: 0

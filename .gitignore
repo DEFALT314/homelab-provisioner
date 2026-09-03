@@ -1,0 +1,19 @@
+# ===== Sekrety (NIGDY nie commit) =====
+.env
+terraform.tfvars
+
+# ===== Lokalna konfiguracja serwisów (prawdziwe IP/domeny) =====
+services/*/service.yml
+
+# ===== Stan Terraform =====
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# ===== Generowane przez Terraform (dla Ansible) =====
+ansible/inventory.yml
+ansible/group_vars/all/services.yml
+
+# ===== Lokalne śmieci =====
+.ansible_tmp/
+.ansible_home/
